@@ -129,7 +129,7 @@ window.onload = function() {
         [1,1,1,1,1,1,1,1],
         [1,1,1,1,1,1,1,1],
         [1,1,1,1,1,1,1,1],
-        [1,1,1,1,1,1,1,1]
+        [2,2,2,2,2,2,2,2]
     ];
     var blockPosition = 40;
     var blockHeight = 20;
@@ -153,14 +153,51 @@ window.onload = function() {
     }
     initblocksColor();
 
-    //ブロックを描画する関数
-    function blockDrow(){
+    var blocksObjAry = [];
+    function createBlocksObjAry(){
         for(var i = 0; i < blockAry.length; i++){
+            blocksObjAry[i] = [];
             for(var j = 0; j < blockAry[i].length; j++){
-                if(blockAry[i][j]){
+                blocksObjAry[i][j] = {};
+                if( blockAry[i][j] ){
+                    blocksObjAry[i][j].isExist = true;
+                    blocksObjAry[i][j].hasItem = false;
+                    blocksObjAry[i][j].color = [];
+                    blocksObjAry[i][j].color.r = r[i][j];
+                    blocksObjAry[i][j].color.g = g[i][j];
+                    blocksObjAry[i][j].color.b = b[i][j];
+                    if(blockAry[i][j] === 2){
+                        blocksObjAry[i][j].hasItem = true;
+                        blocksObjAry[i][j].item = new Item();
+                        // blocksObjAry[i][j].item = new Item;
+                    }
+                }
+            }
+        }
+    }
+    createBlocksObjAry();
+    console.log(blocksObjAry);
+
+    //ブロックを描画する関数
+    // function blockDrow(){
+    //     for(var i = 0; i < blockAry.length; i++){
+    //         for(var j = 0; j < blockAry[i].length; j++){
+    //             if(blockAry[i][j]){
+    //                 ctx.beginPath();
+    //                 ctx.rect(blockWidth * j, blockHeight * i + blocksMarginTop, blockWidth, blockHeight);
+    //                 ctx.fillStyle = 'rgb(' + r[i][j] + ', ' + g[i][j] + ', ' + b[i][j] + ')';//色をランダムに設定
+    //                 ctx.fill();
+    //             }
+    //         }
+    //     }
+    // }
+    function blockDrow(){
+        for(var i = 0; i < blocksObjAry.length; i++){
+            for(var j = 0; j < blocksObjAry[i].length; j++){
+                if(blocksObjAry[i][j].isExist){
                     ctx.beginPath();
                     ctx.rect(blockWidth * j, blockHeight * i + blocksMarginTop, blockWidth, blockHeight);
-                    ctx.fillStyle = 'rgb(' + r[i][j] + ', ' + g[i][j] + ', ' + b[i][j] + ')';//色をランダムに設定
+                    ctx.fillStyle = 'rgb(' + blocksObjAry[i][j].color.r + ', ' + blocksObjAry[i][j].color.g + ', ' + blocksObjAry[i][j].color.b + ')';//色をランダムに設定
                     ctx.fill();
                 }
             }
@@ -169,28 +206,34 @@ window.onload = function() {
     // function itemFall(x) {
     //     alert(x);
     // }
-    function Item(x, y, speed) {
+    function Item() {
         this.x = 0;
         this.y = 0;
         this.speed = 0;
-        this.alive = true;
-        this.setPosition(x, y, speed);
+        this.alive = false;
+        this.isFalling = false;
+        // this.setPosition(x, y, speed);
     }
-    Item.prototype.setPosition = function (x, y, speed){
+    Item.prototype.setPosition = function (x, y){
         this.x = x;
         this.y = y;
-        this.speed = speed;
-        // this.alive = true;
+        this.speed = 1;
+        this.alive = true;
+        // this.isFalling = true;
     }
     Item.prototype.move = function (){
         this.y += this.speed;
     }
+    Item.prototype.kill = function (){
+        this.alive = false;
+    }
     //ブロックとの当たり判定関数
     function blockHitJudgement(){
         var countBlock = 0;//現在のブロック個数をカウントする変数
-        for(var i = 0; i < blockAry.length; i++){
-            for(var j = 0; j < blockAry[i].length; j++){
-                if(blockAry[i][j]){
+        for(var i = 0; i < blocksObjAry.length; i++){
+            for(var j = 0; j < blocksObjAry[i].length; j++){
+                // if(blockAry[i][j]){
+                if(blocksObjAry[i][j].isExist){
                     countBlock++;//現在のブロック個数をカウントアップ
                     var hit = false;//当たったかどうかのフラグ
                     //下辺との当たり判定
@@ -234,14 +277,17 @@ window.onload = function() {
                         }
                     }
                     if( hit ) {//もし当たってたら音を鳴らす
-                        if( blockAry[i][j] === 2 ){
+                        if( blocksObjAry[i][j].hasItem ){
                             var width = blockWidth * j + blockWidth/2;
                             var height = blockHeight * i + blockHeight/2 + blocksMarginTop;
                             // tempItem.setPosition(width, height, 1);
                             itemsAry.push(new Item(width, height, 1));
                             // console.log(itemsAry);
+                            blocksObjAry[i][j].item.alive = true;
+                            blocksObjAry[i][j].item.isFalling = true;
                         }
-                        blockAry[i][j] = 0;
+                        // blockAry[i][j] = 0;
+                        blocksObjAry[i][j].isExist = false;
                         button05.pause();
                         button05.currentTime = 0;
                         button05.play();
@@ -278,12 +324,13 @@ window.onload = function() {
         count = 0;
         moveLeft = false;
         moveRight = false;
-        blockAry = [
-            [1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1],
-            [1,1,1,1,1,1,1,1],
-            [2,2,2,2,2,2,2,2]
-        ];
+        createBlocksObjAry();
+        // blockAry = [
+        //     [1,1,1,1,1,1,1,1],
+        //     [1,1,1,1,1,1,1,1],
+        //     [1,1,1,1,1,1,1,1],
+        //     [2,2,2,2,2,2,2,2]
+        // ];
         //----------------------------------------ボールの変数
         // speedY = -4.0; //移動速度
         speedY = -(Math.floor(Math.random() * 2.0) + 2 ); //移動速度
@@ -394,24 +441,38 @@ window.onload = function() {
                 // animationStop(_animationID);
             }
             //----------------------------------------------------------item
-            if(itemsAry.length) {
-                for(var i = 0; i < itemsAry.length; i++){
-                    itemsAry[i].move();
-                    ctx.drawImage(img, itemsAry[i].x - 25/2, itemsAry[i].y - 25/2, 25, 25);
-                    //自機との当たり判定
-                    if (rectY - (itemsAry[i].y + 25/2) < 0 &&
-                        (rectY + rectHeight) - (itemsAry[i].y + 25/2) > 0 ) {
-                        if (itemsAry[i].x > rectX && itemsAry[i].x < (rectX + rectWidth)) {
-                            itemsAry.splice(i, 1);
-                            rectWidth += 40;
-                            rectX -= 20;
-                            // animationStop();
-                            // select06.pause();
-                            // select06.currentTime = 0;
-                            // select06.play();
-                        }
-                    }else if(itemsAry[i].y > ctx.canvas.height + 25/2){//画面外に出た場合、配列から削除する
-                        itemsAry.splice(i, 1);
+            // if(itemsAry.length) {
+            //     for(var i = 0; i < itemsAry.length; i++){
+            //         itemsAry[i].move();
+            //
+            //         // console.log('itemAry %d, %d', i, itemsAry[i].y);
+            //
+            //         ctx.drawImage(img, itemsAry[i].x - 25/2, itemsAry[i].y - 25/2, 25, 25);
+            //         //自機との当たり判定
+            //         if (rectY - (itemsAry[i].y + 25/2) < 0 &&
+            //             (rectY + rectHeight) - (itemsAry[i].y + 25/2) > 0 ) {
+            //             if (itemsAry[i].x > rectX && itemsAry[i].x < (rectX + rectWidth)) {
+            //                 itemsAry.splice(i, 1);
+            //                 rectWidth += 40;
+            //                 rectX -= 20;
+            //                 // animationStop();
+            //                 // select06.pause();
+            //                 // select06.currentTime = 0;
+            //                 // select06.play();
+            //             }
+            //         }else if(itemsAry[i].y > ctx.canvas.height + 25/2){//画面外に出た場合、配列から削除する
+            //             itemsAry.splice(i, 1);
+            //         }
+            //     }
+            // }
+            for(var i = 0; i < blocksObjAry.length; i++){
+                for(var j = 0; j < blocksObjAry[0].length; j++){
+                    // console.log(blocksObjAry[i][j]);
+                    // if( blocksObjAry[i][j].hasItem && blocksObjAry[i][j].item.alive ){
+                    if( blocksObjAry[i][j].item && blocksObjAry[i][j].item.alive ){
+                        blocksObjAry[i][j].item.move();
+                        console.log(blocksObjAry[i][j]);
+
                     }
                 }
             }
