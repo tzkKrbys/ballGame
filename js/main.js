@@ -7,6 +7,7 @@ window.onload = function() {
     //初期設定部分。ここで使用する変数や関数、イベントなどを定義しておく。
     var count = 0;
     var isGameStarted = false; //bool値
+    var gameClearDisplayTime = 0; //bool値
     var moveLeft; //bool値
     var moveRight; //bool値
     // var _isRunning;
@@ -103,7 +104,6 @@ window.onload = function() {
     } else {
         bestTime = 0;
     }
-    // console.log(bestTime);
 
     moveLeft = false;
     moveRight = false;
@@ -112,8 +112,6 @@ window.onload = function() {
     // speedX = 4; //移動速度
     speedY = -4.0; //移動速度
     speedX = Math.sqrt(Math.pow(speed,2) - Math.pow(speedY,2));
-    // BallX = 50; //X軸の位置
-    // BallY = 350; //y軸の位置
 
     //----------------------------------------実機の変数
     rectSpeedX = 8; //移動速度
@@ -203,7 +201,6 @@ window.onload = function() {
                     BallY - ( blockHeight * i + blocksMarginTop ) > logoHeight/2 &&
                      speedY < 0){
                         if( blockWidth * j < BallX && BallX < blockWidth * ( j + 1 ) ){
-                            // blockAry[i][j] = 0;
                             speedY = -speedY;
                             hit = true;
                         }
@@ -213,7 +210,6 @@ window.onload = function() {
                     (blockHeight * ( i + 1 ) + blocksMarginTop) - BallY > logoHeight/2 &&
                      0 < speedY ){
                         if( blockWidth * j < BallX && BallX < blockWidth * ( j + 1 )){
-                            // blockAry[i][j] = 0;
                             speedY = -speedY;
                             hit = true;
                         }
@@ -223,7 +219,6 @@ window.onload = function() {
                         if((blockWidth * j) - BallX < logoWidth/2 &&
                         blockWidth * (j+1) - BallX > logoWidth/2 &&
                          speedX > 0 ){
-                            // blockAry[i][j] = 0;
                             speedX = -speedX;
                             hit = true;
                         }
@@ -233,18 +228,15 @@ window.onload = function() {
                         if( BallX - blockWidth * (j + 1) < logoWidth/2 &&
                         BallX - blockWidth * j > logoWidth/2 &&
                          speedX < 0 ){
-                            // blockAry[i][j] = 0;
                             speedX = -speedX;
                             hit = true;
                         }
                     }
                     if( hit ) {//もし当たってたら音を鳴らす
-                        if( blockAry[i][j] === 2 ){
+                        if( blockAry[i][j] === 2 ){//2が入ってたらitemを降らせる
                             var width = blockWidth * j + blockWidth/2;
                             var height = blockHeight * i + blockHeight/2 + blocksMarginTop;
-                            // tempItem.setPosition(width, height, 1);
                             itemsAry.push(new Item(width, height, 1));
-                            // console.log(itemsAry);
                         }
                         blockAry[i][j] = 0;
                         button05.pause();
@@ -255,28 +247,26 @@ window.onload = function() {
                 }
             }
         }
-        if(!countBlock){//現在のブロックが0個の場合
-            //game clear!の文字を画面に表示
-            ctx.font = "40px 'ＭＳ Ｐゴシック'";
-            ctx.textAlign = "center";
-            ctx.fillStyle = "#CC66bb";
-            ctx.fillText("game clear!!", canvas.width / 2, 250);
-            if(isGameStarted){
-                isGameStarted = false;//ゲーム中のフラグを下す
-                bgm.pause();//BGMを停止
-                bgm.currentTime = 0;//BGM再生タイムを先頭へ
-                fanfare.pause();
-                fanfare.currentTime = 0;
-                fanfare.play();
-                if(countTime < bestTime){
-                    bestTime = countTime;
-                    localStorage.setItem('bestTime', bestTime);
-                }
+        if( !countBlock && isGameStarted ){//現在のブロックが0個の場合
+            gameClearFunc();
+        }
+    }
+    function gameClearFunc(){
+        gameClearDisplayTime = 600;//10秒間game clearの文字を表示
+        if(isGameStarted){
+            isGameStarted = false;//ゲーム中のフラグを下す
+            bgm.pause();//BGMを停止
+            bgm.currentTime = 0;//BGM再生タイムを先頭へ
+            fanfare.pause();
+            fanfare.currentTime = 0;
+            fanfare.play();
+            if(countTime < bestTime){
+                bestTime = countTime;
+                localStorage.setItem('bestTime', bestTime);
             }
         }
     }
 
-    //関数群
     //初期化関数
     function gameStartFunc() {
         if(!isGameStarted){
@@ -290,6 +280,13 @@ window.onload = function() {
                 [2,1,2,1,1,2,2,1],
                 [2,2,2,2,2,2,2,2]
             ];
+            //test
+            // blockAry = [
+            //     [0,0,0,0,0,0,0,0],
+            //     [0,0,0,0,0,0,0,0],
+            //     [0,0,0,0,0,0,0,0],
+            //     [0,0,0,0,2,0,0,0]
+            // ];
             itemsAry = [];
             itemTime = 0;
             rectWidth = 100;
@@ -326,7 +323,6 @@ window.onload = function() {
     })();
     var cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame;
     function animationStop() {
-        // _isRunning = false;
         cancelAnimationFrame(_animationID);
     }
 
@@ -336,24 +332,36 @@ window.onload = function() {
         _animationID = requestAnimFrame(loop);
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);//canvasをクリア
         blockDrow();//ブロックを描画
-
-        if(itemTime){
-            itemTime--;
-            if(itemTime === 1){
-                //元に戻す
-                rectWidth = 100;
-                rectHeight = 10;
-                powpowpow.pause();
-                powpowpow.currentTime = 0;
-                powpowpow.play();
-            }
+        if(gameClearDisplayTime){
+            //game clear!の文字を画面に表示
+            ctx.font = "40px 'ＭＳ Ｐゴシック'";
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#CC66bb";
+            ctx.fillText("game clear!!", canvas.width / 2, 250);
+            gameClearDisplayTime--;
         }
 
-        if(isGameStarted){
+
+        if(isGameStarted && !gameClearDisplayTime){
             count++;
             // ループ毎にxを加算し、ボールを１コマ毎に移動させる
+
             BallX += speedX;
             BallY += speedY;
+
+            if(itemTime){//アイテム効力中の場合
+                itemTime--;
+                if(itemTime === 1){
+                    //元に戻す
+                    rectWidth = 100;
+                    rectHeight = 10;
+                    rectX += 20;
+                    powpowpow.pause();
+                    powpowpow.currentTime = 0;
+                    powpowpow.play();
+                }
+            }
+
             // 円を描画
             // 変数xの値を変化させる
             var hitWall = false;
@@ -368,6 +376,7 @@ window.onload = function() {
             // 変数yの値を変化させる
             if (BallY < logoHeight/5) {
                 speedY = -speedY;
+                hitWall = true;
             }
             if(hitWall){
                 button04a.pause();
@@ -419,7 +428,6 @@ window.onload = function() {
                                 itemGet.play();
                             }
                         }else if(itemsAry[i].y > ctx.canvas.height + 25/2){//画面外に出た場合、配列から削除する
-                            // itemsAry.splice(i, 1);
                             itemsAry[i].alive = false;
                         }
 
@@ -466,11 +474,13 @@ window.onload = function() {
         } else {//ゲーム中でない時
             BallX = rectX + rectWidth/2;
             BallY = rectY - logoHeight/2;
-            /* フォントスタイルを定義 */
-            ctx.font = "40px 'ＭＳ Ｐゴシック'";
-            ctx.textAlign = "center";
-            ctx.fillStyle = "#0066bb";
-            ctx.fillText("click or enter!", canvas.width / 2, 250);
+            if(!gameClearDisplayTime){
+                /* フォントスタイルを定義 */
+                ctx.font = "40px 'ＭＳ Ｐゴシック'";
+                ctx.textAlign = "center";
+                ctx.fillStyle = "#0066bb";
+                ctx.fillText("click or enter!", canvas.width / 2, 250);
+            }
         }
         ctx.drawImage(img, BallX - logoWidth / 2, BallY - logoHeight / 2, 25, 25);
 
