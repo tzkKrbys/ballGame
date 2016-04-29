@@ -1,3 +1,5 @@
+
+
 window.onload = function() {
     // Canvas未サポートは実行しない
     if (!window.HTMLCanvasElement) return;
@@ -35,10 +37,16 @@ window.onload = function() {
 
     var itemsAry = [];
 
-    var img = new Image();
-    var logoWidth = 25;
-    var logoHeight = 25;
-    img.src = "./images/gsacLogoBlue50x50.png";
+    var logoImg = new Image();
+    var logoImgWidth = 25;
+    var logoImgHeight = 25;
+    logoImg.src = "./images/gsacLogoBlue50x50.png";
+
+    var bgImg = new Image();
+    var bgImgWidth = 510;
+    var bgImgHeight = 510;
+    bgImg.src = "./images/gsacademylogo.jpg";
+
 
     var itemTime = 0;
 
@@ -117,7 +125,7 @@ window.onload = function() {
     rectSpeedX = 8; //移動速度
     rectSpeedY = 1.3; //移動速度
     rectX = ctx.canvas.width/2 - rectWidth/2; //X軸の位置
-    rectY = 450; //y軸の位置
+    rectY = ctx.canvas.height - 60; //y軸の位置
 
     //----------------------------------------イベントの設定
     window.addEventListener('keydown', KeyDown, true); //キーを押した時、呼び出される関数を指定
@@ -197,8 +205,8 @@ window.onload = function() {
                     countBlock++;//現在のブロック個数をカウントアップ
                     var hit = false;//当たったかどうかのフラグ
                     //下辺との当たり判定
-                    if( BallY - ( blockHeight * ( i + 1 ) + blocksMarginTop ) < logoHeight/2 &&
-                    BallY - ( blockHeight * i + blocksMarginTop ) > logoHeight/2 &&
+                    if( BallY - ( blockHeight * ( i + 1 ) + blocksMarginTop ) < logoImgHeight/2 &&
+                    BallY - ( blockHeight * i + blocksMarginTop ) > logoImgHeight/2 &&
                      speedY < 0){
                         if( blockWidth * j < BallX && BallX < blockWidth * ( j + 1 ) ){
                             speedY = -speedY;
@@ -206,8 +214,8 @@ window.onload = function() {
                         }
                     }
                     //上辺との当たり判定
-                    if( ((blockHeight * i) + blocksMarginTop) - BallY  < logoHeight/2 &&
-                    (blockHeight * ( i + 1 ) + blocksMarginTop) - BallY > logoHeight/2 &&
+                    if( ((blockHeight * i) + blocksMarginTop) - BallY  < logoImgHeight/2 &&
+                    (blockHeight * ( i + 1 ) + blocksMarginTop) - BallY > logoImgHeight/2 &&
                      0 < speedY ){
                         if( blockWidth * j < BallX && BallX < blockWidth * ( j + 1 )){
                             speedY = -speedY;
@@ -216,8 +224,8 @@ window.onload = function() {
                     }
                     //左辺との当たり判定
                     if( (blockHeight * i) + blocksMarginTop < BallY && BallY < blockHeight * i + blockHeight + blocksMarginTop ){
-                        if((blockWidth * j) - BallX < logoWidth/2 &&
-                        blockWidth * (j+1) - BallX > logoWidth/2 &&
+                        if((blockWidth * j) - BallX < logoImgWidth/2 &&
+                        blockWidth * (j+1) - BallX > logoImgWidth/2 &&
                          speedX > 0 ){
                             speedX = -speedX;
                             hit = true;
@@ -225,8 +233,8 @@ window.onload = function() {
                     }
                     // //右辺との当たり判定
                     if( (blockHeight * i) + blocksMarginTop < BallY && BallY < blockHeight * (i+1) + blocksMarginTop ){
-                        if( BallX - blockWidth * (j + 1) < logoWidth/2 &&
-                        BallX - blockWidth * j > logoWidth/2 &&
+                        if( BallX - blockWidth * (j + 1) < logoImgWidth/2 &&
+                        BallX - blockWidth * j > logoImgWidth/2 &&
                          speedX < 0 ){
                             speedX = -speedX;
                             hit = true;
@@ -326,12 +334,34 @@ window.onload = function() {
         cancelAnimationFrame(_animationID);
     }
 
+    function drawBgImg() {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);//canvasをクリア
+      ctx.drawImage(bgImg, (ctx.canvas.width - bgImgWidth)/2, (ctx.canvas.height - bgImgHeight)/2, bgImgWidth, bgImgHeight);
+    }
+
     // -----------------------------------------------------------ループ関数
     //この関数内でいろんな値をupdateさせて、アニメーションさせる
     function loop() {
         _animationID = requestAnimFrame(loop);
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);//canvasをクリア
+        drawBgImg();//背景
         blockDrow();//ブロックを描画
+
+        //テキストを描画
+        ctx.font = "20px 'ＭＳ Ｐゴシック'";
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#000";
+        ctx.fillText("G's Academy ブロック崩し", canvas.width / 2, 20);
+        ctx.font = "14px 'ＭＳ Ｐゴシック'";
+        ctx.textAlign = "left";
+        ctx.fillText('TIME : ' + (Math.floor(count/60)), 20, 40);
+        ctx.font = "14px 'ＭＳ Ｐゴシック'";
+        ctx.textAlign = "right";
+        ctx.fillText('BESTTIME : ' + bestTime, canvas.width - 20, 40);
+        ctx.font = "14px 'ＭＳ Ｐゴシック'";
+        ctx.textAlign = "center";
+        ctx.fillText("スマホを傾けて操作してね", canvas.width / 2, (canvas.height - 10));
         if(gameClearDisplayTime){
             //game clear!の文字を画面に表示
             ctx.font = "40px 'ＭＳ Ｐゴシック'";
@@ -365,16 +395,16 @@ window.onload = function() {
             // 円を描画
             // 変数xの値を変化させる
             var hitWall = false;
-            if (BallX < logoWidth/2 && speedX < 0) {
+            if (BallX < logoImgWidth/2 && speedX < 0) {
                 speedX = -speedX;
                 hitWall = true;
             }
-            if (ctx.canvas.width - BallX < logoWidth/2 && speedX > 0) {
+            if (ctx.canvas.width - BallX < logoImgWidth/2 && speedX > 0) {
                 speedX = -speedX;
                 hitWall = true;
             }
             // 変数yの値を変化させる
-            if (BallY < logoHeight/5) {
+            if (BallY < logoImgHeight/5) {
                 speedY = -speedY;
                 hitWall = true;
             }
@@ -385,7 +415,7 @@ window.onload = function() {
             }
 
             //ボールが最下部に到達してしまった場合にゲームを終了させる
-            if (BallY > 495) {
+            if (BallY > ctx.canvas.height) {
                 speedX = 0; //移動速度
                 speedY = 0; //移動速度
                 destruction1.pause();
@@ -410,7 +440,7 @@ window.onload = function() {
                 for(var i = 0; i < itemsAry.length; i++){
                     if(itemsAry[i].alive){
                         itemsAry[i].move();
-                        ctx.drawImage(img, itemsAry[i].x - 25/2, itemsAry[i].y - 25/2, 25, 25);
+                        ctx.drawImage(logoImg, itemsAry[i].x - 25/2, itemsAry[i].y - 25/2, 25, 25);
                         //自機との当たり判定
                         if (rectY - (itemsAry[i].y + 25/2) < 0 &&
                             (rectY + rectHeight) - (itemsAry[i].y - 25/2) > 0 ) {
@@ -437,8 +467,8 @@ window.onload = function() {
 
             //自機との当たり判定
             var hit = false;
-            if (rectY - (BallY + logoHeight/2 ) < 0 &&
-                (rectY + rectHeight) - ( BallY - logoHeight/2 ) > 0 &&
+            if (rectY - (BallY + logoImgHeight/2 ) < 0 &&
+                (rectY + rectHeight) - ( BallY - logoImgHeight/2 ) > 0 &&
                 speedY > 0) {
                 if (BallX >= rectX && BallX <= (rectX + rectWidth)) {
                     if(moveLeft){
@@ -453,12 +483,12 @@ window.onload = function() {
                     }
                     hit = true;
                 } else if (BallX < rectX ){
-                    if(BallX + logoWidth/2 > rectX ){
+                    if(BallX + logoImgWidth/2 > rectX ){
                         speedX = -5.4;
                         hit = true;
                     }
                 } else if ( BallX > (rectX + rectWidth) ){
-                    if(BallX - logoWidth/2 < (rectX + rectWidth)){
+                    if(BallX - logoImgWidth/2 < (rectX + rectWidth)){
                         speedX = 5.4;
                         hit = true;
                     }
@@ -473,7 +503,7 @@ window.onload = function() {
             }
         } else {//ゲーム中でない時
             BallX = rectX + rectWidth/2;
-            BallY = rectY - logoHeight/2;
+            BallY = rectY - logoImgHeight/2;
             if(!gameClearDisplayTime){
                 /* フォントスタイルを定義 */
                 ctx.font = "40px 'ＭＳ Ｐゴシック'";
@@ -482,7 +512,7 @@ window.onload = function() {
                 ctx.fillText("click or enter!", canvas.width / 2, 250);
             }
         }
-        ctx.drawImage(img, BallX - logoWidth / 2, BallY - logoHeight / 2, 25, 25);
+        ctx.drawImage(logoImg, BallX - logoImgWidth / 2, BallY - logoImgHeight / 2, 25, 25);
 
         //自機の変数の値を変化させる
         if (moveLeft) {//もし左キーが押されていたら
@@ -512,4 +542,36 @@ window.onload = function() {
 
     }
     loop();
+
+
+
+
+
+    // deviceorientationイベントで、デバイスの回転を継続的に取得できます。
+    window.ondeviceorientation = function(event) {
+      // 回転軸
+      var alpha = event.alpha;   // z-axis
+      var beta = event.beta;     // x-axis
+      var gamma = event.gamma;   // y-axis
+      // var html = '回転：　<br>alpha(z-axis)=' + alpha + "<br> beta(x-axis)=" + beta + "<br> gumma(y-axis )=" + gamma + "<br> moveLeft=" + moveLeft;
+      // info.innerHTML = html;
+      // var gyroscope = document.querySelector('#gyroscope');
+
+      if(gamma < -5) {
+        // alert(gamma);
+        moveLeft = true;
+      }else if (gamma > 5){
+        moveRight = true;
+      } else {
+        moveLeft = false;
+        moveRight = false;
+      }
+
+      // gyroscope.innerHTML = html;
+
+    };
+
+
+
+
 };
