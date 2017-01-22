@@ -1,0 +1,895 @@
+この章では、ブロック崩しゲームを作成します。昔からある懐かしいゲームです。
+pcから方向キーやaキーdキーで自機を左右に移動させプレイしますが、スマートフォンで開いた際にもプレイできるよう、傾きでの操作ができるようにしました。
+
+
+完成したコードはこちらになります。（リンク）
+canvas要素をクリック、又はenterキー、スペースキー押下でゲームがスタートします。
+自機となる四角い物体を方向キーまたはA,Dキーで左右に動かすことができ、
+スマートフォンの傾きセンサーでも動かす事ができます。
+
+ゲームがスタートすると、ジーズアカデミーのロゴマークが入ったボールが動き、壁や、画面上部のブロックに当たると反射します。
+ボールが画面最下部まで到達してしまうとゲーム終了となります。
+
+ボールが画面上部のブロックに当たると、ブロックが消えます。
+すべてのブロックを消し終わると、ゲームクリアとなります。
+
+ブロックの中の幾つかには、アイテムが隠されており、そのブロックにボールが当たると、アイテムが降ってきます。
+自機を動かしてアイテムを取る事ができます。
+アイテムは色によって効果が異なります。
+グリーンのアイテムを取得すると自機が長くなり、ピンクのアイテムを取ると、自機が短くなります。
+
+ゲームをスタートすると、時間のカウントも始まります。
+ゲームをクリアした際、クリア時の時間が過去最短のタイムであった場合、besttimeとして登録されます。
+besttimeはブラウザのlocalstrageへ登録されます。
+besttimeが登録されている場合は、次回このアプリを開いた際にbesttimeとして読み込まれます。
+
+
+このゲームを作成するために必要と思われる主な項目を以下に記していきます。
+・canvas要素での画像、テキスト描画
+・アニメーション(ループ)処理
+・click,keydownイベント登録
+・audioファイルの再生のタイミング制御
+・オブジェクトの書き方
+・クラスの書き方
+・当たり判定
+・二次元配列でのマップ作成
+・ランダムでアイテムを設定
+・衝突判定
+・localstrageへのデータ保存、取得
+・スマホ表示対応
+・スマホのジャイロセンサーの傾き取得
+
+
+それではコードを解説していきます。
+
+//----------------------------------------------------------
+htmlファイル部分の解説
+//----------------------------------------------------------
+今回はcanvas部分にゲームの画面を描画していきますので、index.htmlファイル内のbody要素内に、
+canvas要素を記述します。
+サイズについてはスマートフォンでも操作出来る様にする為、width属性の値に320px,height属性の値に540pxを指定します。
+
+
+//-----------------------------------------
+【index.html】
+//-----------------------------------------
+
+それでは、まずはindex.htmlファイルを見ていきましょう。
+
+■headタグ内
+今回は、スマホでの使用をメインに考えていきます。
+スマホ表示を基本とし、スマホで見た際にゲーム画面が、スマホのスマホの画面幅いっぱいに表示されるようにしました。pcでもスマホ画面表示の状態で、プレイできるようにhtmlファイルを記述し、pc、スマホ別々のviewportになる様にしています。
+■５行目〜１４行目のscriptタグ部分
+スマホ表示とpc表示で、viewportを変更するために、scriptタグ内でuserAgent別に条件分岐をしています。今回はiPhone,iPad,Android端末のいずれかでアクセスした場合に、スマホ表示となるように記述いたしました。それ以外の端末でアクセスした際は、pc用のviewportが表示されます。
+
+meta要素に name="viewport" を追加すると、文書の表示領域を設定することができます。
+content属性	文書情報の内容
+
+width 表示領域の幅を指定
+user-scalable=no ズームの操作を許可しない
+
+■bodyタグ内
+17行目〜22行目のbodyタグ内を確認しましょう。
+今回はゲームに関する要素、情報は全てcanvas要素内に記述しますので、htmlファイルは至ってシンプルです。canvas要素を、幅375ピクセル、高さ540ピクセルで指定し、記述しました。
+それ以外はscriptタグで、今回サウンドを鳴らすために使用する、soundJsのファイルを読み込んでいます。
+その他についてはメインのjsファイルとして使用する、main.jsと、クラスを定義したclass.jsを読み込んでいます。
+
+
+index.html部分についての説明は以上です。非常にシンプルです。
+
+
+
+//----------------------------------------------------
+【main.js】
+//----------------------------------------------------
+それでは続いて、main.jsの中身について確認していきます。
+
+ファイル冒頭
+(function() {
+  'use strict';
+
+1行目の部分については、即時関数でスクリプト全体を関数でラッピングし、変数のグローバル汚染を防ぐために記述いたしました。
+2行目については、「strictモード（厳格モード）」を適用するために記述いたしました。strictモードでは、より厳格にエラーチェックが行われるため、これまでエラーにならなかったような実装がエラー扱いになる場合があります。これによって、コード内に存在する潜在的な問題を発見しやすくなります。
+
+
+
+
+// Canvas未サポートは実行しない
+if (!window.HTMLCanvasElement) return;
+5行目のこの一文については、canvas非対応のブラウザで開いた際に、スクリプトを読み込まない様にする為記述しました。windowオブジェクトのHTMLCanvasElementプロパティがfalseの場合は、canvas要素が非対応のブラウザということになるため、即時でリターンしscriptを終了させます。
+
+
+
+
+【定数、変数（オブジェクト）、の定義部分について】
+定数、変数（オブジェクト）については、スクリプトの最初の方でまとめて定義してあります。
+定数は最上部にまとめて定義しています。
+今回使用する定数は、画像のパス情報です。
+定数は大文字で記述いたします。
+
+
+
+
+//----------------------------------------------
+定数ブロック
+//----------------------------------------------
+アイテムの種別なども数値では分かりにくいため、定数を用意し、他人が見てもある程度意味がわかるような名前をつけています。
+画像パスやカラーなどは、決まった文字列を使用するため、定数にしています。
+ブロックを描画する際に使用する定数については、数字によって以下の意味をもたせています。
+0・・・ブロックがない
+1・・・ブロックがある
+2・・・ブロックがあり、かつ緑のアイテムが入っている
+3・・・ブロックがあり、かつピンクのアイテムが入っている
+数字のみのままでも問題はないのですが、自分以外の人が見た時にもあり程度意味が伝わるように、以下のように定数にしてあります。
+var NO_BLOCK = 0;
+var EXIST_BLOCK = 1;
+var BLOCK_WITH_GREEN_ITEM = 2;
+var BLOCK_WITH_PINK_ITEM = 3;
+
+効果中のアイテムを表す定数についても同様に、数値によって以下のように意味をもたせています。
+//効果中のアイテムを表す定数
+var NO_ITEM = 0;・・・アイテム効果中でないことを示す
+var GREEN_ITEM = 1;・・・greenのアイテム効果中であることを示す
+var PINK_ITEM = 2;・・・pinkのアイテム効果中であることを示す
+
+時期の幅の定数については、数値で値を入力すれば良いのですが、こちらも自分以外の人が意味を把握できるように定数にしてあります。
+var NORMAL_WIDTH = 100;・・・自機の標準時の幅
+var SHORT_WIDTH = 60;・・・緑のアイテムを取った際の自機の幅
+var LONG_WIDTH = 140;・・・ピンクのアイテムを取った際の自機の幅
+このようにすることで、数値で扱うよりも、意味を把握しやすくなります。
+
+
+
+
+//----------------------------------------------
+変数ブロック
+//----------------------------------------------
+変数も一箇所にまとめて記述しています。
+他の変数については、今回はすべて、オブジェクトにまとめました。
+今回は、、を取得し、変数にしてあります。
+canvas・・・canvas要素
+ctx・・・canvasのcontext
+itemsAry・・・アイテムを表示させるために使用する配列
+bgImg・・・背景画像用の背景
+
+
+
+//---------------------------------------------
+オブジェクト定義ブロック
+//---------------------------------------------
+ゲームステータス、自機、ボール、ブロック等に関連する変数は、それぞれを個別で定義しても良いのですが、数が多くなってくるとどの変数が何に関連しているものなのかが把握しづらくなってきてしまうため、今回はオブジェクトにまとめてあります。こうすることで、例えばボールに関連する変数は　ba.posX　のようにオブジェクト名に紐付いた形で記述でき、
+把握しやすくなります。
+関数も、オブジェクトのメソッドという形で定義することができます。
+こうしなければならないという決まりは特にはないのですが、こういうまとめ方もあるということを知っていただければと思います。
+gs・・・ゲームのステータスをまとめたオブジェクト
+ba・・・ボールに関連するプロパティ、メソッドをまとめたオブジェクト
+p・・・自機に関連するプロパティ、メソッドをまとめたオブジェクト
+bl・・・ブロックに関連するプロパティ、メソッドをまとめたオブジェクト
+sf・・・サウンドに関連するプロパティ、メソッドをまとめたオブジェクト
+util・・・ツール的なメソッドをまとめたオブジェクト
+
+gsオブジェクトについて(gs・・・ゲームのステータスをまとめたオブジェクト)
+こちらはゲームのステータスに関する情報を保有させたオブジェクトになります。
+frameCount: 0・・・アニメーションフレームのカウンターです。初期値として数値0を入力してあります。
+isGameStarted: false・・・ゲーム中かどうかを判断するフラグとして使用します。
+startTime: 0・・・ゲームをスタートした時点の現在の日時ミリ秒です。時間をカウントするために使用します。
+countTime: 0・・・ゲームをスタートしてから経過した秒数として使用します。
+bestTime: null・・・ベストタイムの数値を格納するものとして使用します。
+gameOverDisplayTime: 0・・・ゲームをクリアした際に画面上に「ゲームクリア」の文字を表示させる時間として使用します。
+gameClearDisplayTime: 0 //ゲームをクリアした際に画面上に「ゲームクリア」の文字を表示させる時間として使用します。
+
+baオブジェクトについて(ba・・・ボールに関連するプロパティ、メソッドをまとめたオブジェクト)
+
+
+//-----------------------------------------------
+ballオブジェクト
+//-----------------------------------------------
+var ba = { //・・・ballの略
+  speed: 6, //・・・ボールの絶対スピードを格納します。
+  speedX: 0, //・・・ボールのx方向のスピードを格納します。
+  speedY: 0, //・・・ボールのy方向のスピードを格納します。
+  posX: 0, //・・・ボールのx座標を格納します。
+  posY: 0, //・・・ボールのy座標を格納します。
+  diameter: 25, //・・・ボールの直径を格納します。
+  radius: 12.5, //・・・ボールの半径を格納します。
+  imgPath: null,//・・・ボールの画像を格納します。こちらは一旦空で定義し、後ほど画像要素を格納します。
+  move: function() { //・・・ballを動かすmoveメソッドを定義しています。こちらの関数が実行されるとボールの座標が１アニメーションフレーム分移動します。
+    this.posX += this.speedX;//・・・x座標をspeedX分移動させます
+    this.posY += this.speedY;//・・・y座標をspeedY分移動させます。
+  }
+};
+ba.imgPath = (function() {//・・・上記で初期値をnullにしていたba.imgPathプロパティへボール画像を設定するため、即時関数を実行し、その戻り値の画像要素を代入しています。
+  var image = new Image();//・・・imgタグを生成します。
+  image.src = LOGO_BLUE_PATH;//・・・imgタグにパスを指定するため、生成したimgタグに上記で子のファイルの冒頭で定義した定数を代入しています。
+  return image;//・・・return でimgタグを返し、baオブジェクトのimgPathプロパティへ代入します。
+})();
+
+
+
+//------------------------------------------------------------
+自機オブジェクト（p・・・自機に関連するプロパティ、メソッドをまとめたオブジェクト）
+//------------------------------------------------------------
+var p = { //playerの略
+  speedX: 8, //・・・１フレーム毎に移動できるx方向のスピードを格納します。
+  posX: 0, //・・・自機のX座標を格納します。
+  posY: ctx.canvas.height - 60,//・・・画面下からのポジションを指定します。
+  width: 100, //自機の幅を格納します。
+  height: 10, //自機の高さを格納します。
+  moveLeft: false, //・・・自機を左へ動かすフラグです。こちらがtrueとなっている場合に自機を左に動かします。
+  moveRight: false, //・・・自機を右へ動かすフラグです。こちらがtrueとなっている場合に自機を右に動かします。
+  color: COLOR_BLUE, //・・・自機の色です。アイテムを取得した際にファイル冒頭で定数として定義したものを渡し、自機の色を変更していきます。初期値では平常カラーであるblueを入れています。
+  itemTime: 0, //・・・itemの効力の残り時間を格納します。アイテムを取得すると、こちらの数値が変更され、自機の幅を広げたり縮めたりします。こちらが0になると自機の幅が通常の幅に戻ります。
+  workingItem: NO_ITEM, //・・・今効いているアイテムのタイプを格納します。こちらには定数として定義した数値が格納されます。初期値はアイテム効果中でないことを示す、NO_ITEM定数が格納されています。
+  changeColorFn: function() { //・・・自機の色変更するためのメソッドを定義しています。
+    if (this.workingItem === GREEN_ITEM) {//・・・自分自身を示す「this」から自身のworkingItemを参照し条件分岐しています。もし効果中のアイテムが緑なら
+      this.color = COLOR_GREEN;//・・・自機の色をグリーンに変更します。
+    } else if (this.workingItem === PINK_ITEM) {//・・・もし効果中のアイテムがピンクなら
+      this.color = COLOR_PINK;//・・・自機の色をピンクに変更します。
+    } else {//・・・もし効果中のアイテムがグリーンでもピンクでもなければ（アイテム効果中で無ければ）
+      this.color = COLOR_BLUE;//・・・自機の色をブルーに戻します。
+    }
+  },
+  move: function() { //自機の変数の値を変化させるメソッド
+    if (this.moveLeft) { //もし左キーが押されていたら
+      this.posX -= this.speedX; //x座標をspeedX分減算
+    }
+    if (this.moveRight) { //もし右キーが押されていたら
+      this.posX += this.speedX; //x座標をspeedX分足す
+    }
+    if (this.posX < 0) { //自機が左端なら
+      this.posX = 0; //自機のx座標を0に戻す
+    } else if ((this.posX + this.width) - ctx.canvas.width > 0) { //自機が右端以上なら
+      this.posX = ctx.canvas.width - this.width; //右端に戻す
+    }
+  }
+};
+
+//---------------------------------------------------------
+soundオブジェクト部分
+//---------------------------------------------------------
+今回はsoundについてはcreate.jsの一つ、sound.jsを使用しています。
+createjs.Sound.registerSoundという関数へ、第一引数をとして音源のパス、第二引数
+にsoundIdを渡します。
+
+createjs.Sound.addEventListener("fileload", handleFileLoad);
+//オーディオファイルのロードが終了した際にloadHandler関数がコールバックで実行される
+
+handleFileLoad関数が実行されると
+createjs.Sound.createInstanceメソッドにsoundIDを渡してを実行すると、インスタンスを返すので、それをsfオブジェクトのプロパティとして格納します。このインスタンスのメソッドで音を再生します。
+sf.soundID.volumeという形でボリューム調整をすることができますので、音量のバランスを適当に調整いたしました。
+最後にinit関数を呼び出し、ゲームを初期化します。
+
+
+//------------------------------------------------
+ブロックオブジェクト(bl・・・ブロックに関連するプロパティ、メソッドをまとめたオブジェクト)
+//------------------------------------------------
+var bl = { //blocksの略です
+  map: [],//・・・ブロックのマップの表すプロパティです。こちらは後ほど初期化し、2次元配列（配列の中に配列が格納されているもの）に変更されます。
+  //・・・完成形のイメージとしては下記のような感じになります。
+  // map: [
+  //   [1, 1, 1, 1, 1, 1, 1, 1],
+  //   [1, 1, 1, 1, 1, 1, 1, 1],
+  //   [1, 1, 1, 1, 1, 1, 1, 1],
+  //   [1, 1, 1, 1, 1, 1, 1, 1]
+  // ],
+  cols: 4,//・・・ブロックマップの縦方向の行数を示すプロパティです。
+  rows: 8,//・・・ブロックマップの横方向の列数を示すプロパティです。
+  colorMap: [], //・・・色情報を格納しておくためのマップです。こちらも後ほど2次元配列へ初期化し、その中の値にrgbの色の情報を格納します。canvasへブロックを描画する際に、この中の値を参照し、ブロックの色を塗っていきます。
+  height: 20,//・・・ブロックの高さを格納します。
+  BLOCK_MARGIN_TOP: 60, //ブロックとcanvas最上部にはある程度隙間を設けており、との隙間の間隔を格納しています。
+  width: null,//・・・こちらはブロックの幅を格納するプロパティですが、初期値はnullとしています。今回は特に行いませんが、ブロックの数を増やしたりする際に、blオブジェクトのrowsプロパティを変更するだけでブロックの数を変更できるように、オブジェクトの外から、canvas要素の幅をrowsの値で割ったものを格納し、幅を決定します。
+  // width: function() { //ブロックの幅を返すメソッド
+  //   return ctx.canvas.width / this.map[0].length;
+  // },
+  initMap: function() {//・・・blオブジェクトのmapプロパティを設定するメソッドです。このメソッドが実行されると、ブロックを描画するためのmapプロパティが2次元配列として、設定されます。内部の処理は下記の通りとなっています。
+    for (var i = 0; i < this.cols; i++) { //・・・このメソッドの中ではfor文の中でfor文を回しています。外側for文については、colsプロパティの値の数だけ繰り返し処理します。
+      this.map[i] = [];//配列内に配列を作成//・・・この部分で、新たに配列を作っています。colsプロパティは４ですので、これによってブロックマップが縦4段となります。
+      for (var j = 0; j < this.rows; j++) {//・・・内側のfor文ではrowsプロパティの値の文だけ繰り返し処理します。これによって、ブロックマップの横並びのこ数がrowsの値の文だけ生成されます。今回は８個のブロックを横並びにしています。
+        var num = util.rand(4);//0から3の４つの乱数を生成し、num変数へその値を格納します。util.randメソッドの解説については、utilオブジェクトの説明を参照してください。
+        格納される値によって意味が異なりますので、以下に記述していきます。
+        0・・・ブロックが無いことを意味する
+        1・・・ブロックはあるが、アイテムが入っていないことを意味する
+        2・・・ブロックがあり、グリーンのアイテムが入っている意味する
+        3・・・ブロックがあり、ピンクのアイテムが入っている意味する
+        これらの値をランダムにマップの値として持たせることで、ブロックやアイテムをランダムに配置しています。
+        this.map[i][j] = num;//・・・先ほど生成した0~3のランダムな値をマップへ格納します。
+      }
+    }
+    this.initblocksColor();//・・・ブロックマップが生成し終わったタイムングでブロックのカラーを初期化するメソッドを実行しています。このメソッドは直下に定義してあります。
+  },
+  initblocksColor: function() {//・・・ブロックの色を指定するマップを生成するためのメソッドです。
+    for (var i = 0; i < this.cols; i++) {//・・・こちらのメソッドも、initMapメソッド同様に、for文の中でfor文を回しています。initMapと同じcols、rowsプロパティを使用するので、mapプロパティの配列と同じcols数、rows数でマップが作られます。
+      this.colorMap[i] = [];//・・・外側のfor文で配列を生成します。
+      for (var j = 0; j < this.rows; j++) {
+        var r = util.rand(255);//・・・カラーの赤の成分をランダムに設定し、一旦変数rへ格納します。
+        var g = util.rand(255);//・・・カラーの緑の成分をランダムに設定し、一旦変数rへ格納します。
+        var b = util.rand(255);//・・・カラーの青の成分をランダムに設定し、一旦変数rへ格納します。
+        this.colorMap[i][j] = [r, g, b];//・・・配列を生成し、その中に先ほど作った変数をr,g,bの順番で値として格納したものを、this.colorMap[i][j]へ格納していきます。こうする事で、bl.map[i][j]のブロックを描画するカラーを、
+        'rgb(' + bl.colorMap[i][j][0] + ', ' + bl.colorMap[i][j][1] + ', ' + bl.colorMap[i][j][2] + ')'
+        ↓↓↓↓↓↓↓↓↓↓
+        'rgb(xxx,xxx,xxx)'
+        のような形で取り出すことができるようになります。
+      }
+    }
+  }
+};
+bl.width = ctx.canvas.width / bl.rows;//canvas要素の幅をrow数で割ったものを幅として設定しています。
+
+
+//-----------------------------------------------
+utilオブジェクト
+//-----------------------------------------------
+utilオブジェクトは有用なツールメソッド集として定義しました。
+// ユーティリティオブジェクトに関数をまとめる
+var util = {
+
+  rand: function(x) {  //・・・整数の乱数を生成するメソッドです。仮引数xで整数を渡し、//0〜x−1までの整数を生成して、そのいずれかの数値を返します。
+    return Math.floor(Math.random() * x);
+  },
+  displayText: function(textObj, x, y) {//・・・canvasにtextを描画するためのメソッドです。必ず関数化する必要はないかもしれませんが引数にオブジェクトを渡せるようにし、デフォルト値を設定できるようにしています。
+    //・・・「||」はorを表す演算子で、論理演算子と言います。論理演算子は左から右へ評価されるため、 「||」の左側の条件がtrueと見ることができる場合は、その値を返します。その際「||」の右は評価されません。
+    逆に「||」の左側の条件がfalseと見ることができる場合は、「||」の右側が評価されます。左側の条件がtrueと見ることができる場合は、その値を返します。もし左側の条件がfalseと見ることができる場合は、falseを返します。
+    この特性を利用して、初期値を設定しました。このメソッドは第一引数としてオブジェクトを受け取ります。例えば以下の式の場合、
+    ctx.font = textObj.font || "14px 'ＭＳ Ｐゴシック'";
+    渡されたオブジェクトのtextプロパティがfalseであった場合、論理演算子「||」の左側の値"14px 'ＭＳ Ｐゴシック'"がctx.fontへ代入されます。これによって、不要な引数を削減しています。
+
+    ctx.textAlign = textObj.position || 'center';//・・・デフォルト値で'center'の文字列を渡している
+    ctx.fillStyle = textObj.color || '#000';//・・・デフォルト値で'#000'のカラーが渡を渡す
+    ctx.fillText(textObj.text, x, y);//・・・canvasのコンテキストのfillTextメソッドでテキストを描画している
+  },
+  //・・・四角を描画する関数です。こちらも必ずしも関数化する必要はありませんが、複数行を一行にまとめて実行できるようにすることによって、すっきりまとまるようにしています。
+  drawRect: function(x, y, width, height, color) {//・・・canvasに描画する処理をまとめたものをメソッドとして定義しました。
+    ctx.beginPath();//・・・まず現在のパスをリセット
+    ctx.fillStyle = color;//・・・塗りつぶしの色を設定して
+    ctx.fillRect(x, y, width, height);//・・・塗りつぶし四角形を描画する
+  },
+  //ブロックを描画する関数です。こちらはアニメーションフレーム関数の中で、フレーム毎に実行します。ブロックマップが二次元配列でできているため、ブロックマップを生成するときと同様に、for文の中でfor文を回して描画します。
+  blockDrow: function() {
+    for (var i = 0; i < bl.cols; i++) {//・・・colsプロパティの値の数だけ繰り返します
+      for (var j = 0; j < bl.rows; j++) {//・・・rowsプロパティの値の数だけ繰り返します
+        if (bl.map.length && bl.map[i][j]) {//・・・現在のブロックをbl.map[i][j]と書くことで指定できる。mapの外側の配列にデータがあり、なおかつ bl.map[i][j]の値でブロックがあれば以下を実行する
+          util.drawRect(//・・・ブロックを描画する関数を実行し、描画する情報として引数にオブジェクトを渡します。
+            bl.width * j,//・・・x座標を指定します。値はブロックの幅にfor文内で現在のrowとして使用しているjをかけて配置する場所を算出します。
+            bl.height * i + bl.BLOCK_MARGIN_TOP,//・・・y座標を指定します。値はブロックの幅にfor文内で現在のcolとして使用しているiをかけて,
+            さらにcanvas上部の隙間を加えて配置する場所を算出し、値として渡します。
+            bl.width,//・・・ブロックの幅を渡たします。
+            bl.height,//ブロックの高さを渡します。
+            'rgb(' + bl.colorMap[i][j][0] + ', ' + bl.colorMap[i][j][1] + ', ' + bl.colorMap[i][j][2] + ')'//ブロックの色を指定する。
+          );
+        }
+      }
+    }
+  }
+}//・・・utilオブジェクト終了
+
+
+//-----------------------------------------------------------
+関数ブロック
+//-----------------------------------------------------------
+//・・・初期化関数を定義しています。ゲームを開始する前に、変数や各オブジェクトのプロパティなどを初期状態に戻すために使用する関数です。
+
+function init() {
+  gs.isGameStarted = false; //・・・ゲーム中のフラグをfalseにします。
+  sf.bgm.stop(); //・・・オーディオbgmをstopします。」
+  gs.frameCount = 0; //・・・フレームカウントを0へ初期化します。
+  p.moveLeft = false; //・・・移動フラグをfalseにします。
+  p.moveRight = false; //・・・移動フラグをfalseにします。
+  p.workingItem = NO_ITEM; //・・・効果中アイテムを初期化します。
+  p.color = COLOR_BLUE; //・・・自機の色を初期化しblueに戻します。
+  //----------------------------------------ボールのプロパティを変更
+  ba.speedY = -2.0; //・・・y方向の移動速度を初期値に戻します。
+  ba.speedX = Math.sqrt(Math.pow(ba.speed, 2) - Math.pow(ba.speedY, 2));//・・・初期化したba.speedYの値をもとに、ba.speedXを算出します。
+  p.posX = ctx.canvas.width / 2 - p.width / 2;//・・・自機の位置をcanvas要素の中央へ配置します。
+  bl.initMap(); //・・・ブロックマップを初期化します。
+
+  itemsAry = []; //・・・アイテムをリセットします。
+  p.itemTime = 0;//・・・アイテム効果中の時間を0に戻します。
+  p.width = NORMAL_WIDTH;//・・・自機の幅をデフォルト値へ戻します。
+}
+// init(); //・・・定義した初期化関数を実行します。
+
+function gameStart() {//・・・ゲームをスタートさせるgameStart関数を定義する
+  //ゲーム中orゲームクリアメッセージ表示中orゲームオーバーメッセージ表示中の場合、関数を実行させないための条件分岐
+  if (gs.isGameStarted || gs.gameClearDisplayTime || gs.gameOverDisplayTime) return;//・・・即時リターンで関数の処理を終了する。
+  gs.startTime = new Date();//・・・new Date();で現在の時刻をgs.startTimeプロパティへ格納し、後ほどこの値を使用してゲームの経過時間を算出する
+  if (!gs.isGameStarted) {//・・・もしゲーム中でなければ
+    gs.isGameStarted = true;//・・・ゲーム中フラグを立てて、ゲーム中の状態とする
+    gs.frameCount = 0;//・・・フレーム数カウントをリセット
+    p.moveLeft = false;//・・・左移動フラグを下し、自機の動きを停止させる
+    p.moveRight = false;//・・・右移動フラグを下し、自機の動きを停止させる
+    p.workingItem = NO_ITEM;//・・・効果中のアイテムを示すプロパティにNO_ITEM定数を代入し、ITEM効果中でない状態にする
+    p.color = COLOR_BLUE;//・・・自機の色をもともとのカラーへ戻す
+    bl.initMap(); //・・・bl.initMapメソッドを実行し、ブロックを初期化する
+    itemsAry = [];//・・・アイテム格納配列を初期化
+    p.itemTime = 0;//・・・アイテム効果時間を初期化
+    p.width = NORMAL_WIDTH;//・・・自機の幅を初期化
+    //----------------------------------------ボールのプロパティ
+    ba.speedY = -(Math.random() * 2 + 3); //縦方向の速度初期化
+    ba.speedX = Math.sqrt(Math.pow(ba.speed, 2) - Math.pow(ba.speedY, 2));//一旦x方向のスピードを決める
+    if (Math.random() > 0.5) {
+      ba.speedX = -ba.speedX;//速度のx方向成分をランダムに決定
+    }
+    //BGMスタート
+    sf.bgm.play({loop:-1});//loopさせる
+  }
+}
+
+//・・・startStop関数について
+画面をクリックした際、ゲームプレイ中でなければゲームを開始し、ゲームプレイ中の場合は、ゲームを停止します。
+画面をクリックorタップしてゲームを開始、中断が自由にできるようにこの関数を作りました。
+  //・・・ゲーム中の時はゲームを終了、そうでない時はスタートする関数
+  function startStop() {
+    if (gs.isGameStarted) {//・・・ゲーム中かどうかを判断する分岐
+      init();//・・・ゲーム中であればinit関数を実行しゲーム停止する
+    } else {//・・・ゲーム中でなければ
+      gameStart();//・・・ゲームをスタートするgameStart関数を実行する
+    }
+  }
+
+
+
+  function gameOver() { //・・・ボールが最下部に来た際にゲームを終了させるために定義した関数です。ゲームが停止した際に必要な処理を記述しています。
+    ba.speedX = 0; //・・・移動速度を0にして、ボールを停止します。
+    ba.speedY = 0; //・・・移動速度を0にして、ボールを停止します。
+    sf.destruction1.stop(); //・・・爆発音の準備をします
+    sf.destruction1.play(); //・・・爆発音を鳴らします
+    sf.bgm.stop(); //bgmを止める
+    gs.isGameStarted = false; //・・・ゲーム中フラグを下します。
+    itemsAry = []; //・・・アイテム配列を初期化します。
+    p.itemTime = 0; //・・・アイテム効果中時間を初期化します。
+    p.width = NORMAL_WIDTH; //・・・自機の幅をデフォルトの幅に戻します。
+    p.posX = ctx.canvas.width / 2 - p.width / 2; //・・・自機の位置を中央にセットします。
+    p.workingItem = NO_ITEM; //・・・効果適用中のアイテムを削除します。
+    p.color = COLOR_BLUE; //・・・色を初期状態の青へ戻します。
+    gs.gameOverDisplayTime = 180; //・・・180を代入し、約3秒間「game over」の文字を表示させます。
+    util.displayText({//画面に「game over」の文字を表示させるため、util.displayTextメソッドを実行し、引数に表示テキストやカラーなどが含まれるオブジェクトを配置します。
+      font: "40px 'ＭＳ Ｐゴシック'",//・・・フォントサイズとスタイルを渡します。
+      color: "#0066bb",//色を紫に。
+      text: "game over"//テキストを渡す
+    }, canvas.width / 2, 250);//第二引数に表示位置を設定
+  }
+
+
+
+
+    function gameClearFunc() {//・・・ゲームをクリアした際に実行するgameClearFunc関数を定義します。
+      if (gs.isGameStarted) { //・・・もしゲーム中なら
+        gs.isGameStarted = false; //・・・ゲーム中のフラグを下します。
+        sf.bgm.stop(); //・・・bgmを止めます。
+        sf.fanfare.play(); //・・・ファンファーレを鳴らします。
+        gs.gameClearDisplayTime = 600; //・・・600の数値をわたし、10秒間game clearの文字を表示させます。
+        if (!gs.bestTime || gs.countTime < gs.bestTime) { //・・・もしbestTimeの登録がないorcountTimeがbestTimeより小さい場合…ベストタイムが出たら
+          gs.bestTime = gs.countTime;//・・・ベストタイムを更新します。
+          localStorage.setItem('bestTime', gs.bestTime);//・・・ローカルストレージにベストタイムを登録します。
+        }
+      }
+    }
+
+
+
+      function　ballHitsBlocks() {//・・・ボールとブロックが衝突した際に実行するballHitsBlocks関数を定義します。
+        var countBlock = 0; //現在のブロック個数をカウントする変数を宣言します。
+        var hit = false; //当たったかどうかのフラグ変数を作成し、初期化します。
+        for (var i = 0; i < bl.map.length; i++) {//・・・for文の中でfor文を回し、すべてのブロックを監視します。
+          for (var j = 0; j < bl.map[i].length; j++) {
+            if (bl.map[i][j]) {//・・・ブロックがある場合に、以下の処理を実行します。
+              countBlock++; //・・・現在のブロック個数をカウントアップします。
+              var ballTop = ba.posY - ba.radius;//・・・ボール最上部のy座標を算出し、変数に格納します。
+              var ballBottom = ba.posY + ba.radius;//・・・ボール最下部のy座標を算出し、変数に格納します。
+              var ballLeft = ba.posX - ba.radius;//・・・ボールの最左部のx座標を算出し、変数に格納します。
+              var ballRight = ba.posX + ba.radius;//・・・ボールの最右部のx座標を算出し、変数に格納します。
+             //
+              var blockTop = (bl.height * i) + bl.BLOCK_MARGIN_TOP;//・・・ブロック上辺のy座標を算出し、変数に格納します。
+              var blockBottom = (bl.height * (i + 1)) + bl.BLOCK_MARGIN_TOP;//・・・ブロック下辺のy座標を算出し、変数に格納します。
+              var blockLeft = bl.width * j;//・・・ブロック左辺のx座標を算出し、変数に格納します。
+              var blockRight = bl.width * (j + 1);//ブロック右辺のx座標を算出し、変数に格納します。
+
+              //・・・以下の部分でブロック下辺との当たり判定を行います。
+              if (ballTop < blockBottom && //・・・ボール最上部がブロックの下辺の位置より下にある場合、かつ、
+                ballTop > blockTop && //・・・ボールの最上部がブロックの底辺より上にある場合、かつ、
+                ba.speedY < 0) { //ボールが下から上に移動している場合
+                if (blockLeft < ba.posX && ba.posX < blockRight) {//ブロック幅よりボール中心のx座標が内側にある場合に、下記の処理を実行
+                  ba.speedY = -ba.speedY;//・・・y方向のスピードを反転させる
+                  hit = true;//・・・当たりフラグをtrueにする
+                }
+              }
+              //・・・ブロック上辺ボールとの当たり判定を行います。
+              if (blockTop < ballBottom &&//・・・ブロック上辺のy座標位置より、ballの最下部が下にある場合、かつ、
+                blockBottom > ballBottom &&//・・・ブロック上辺のy座標位置より、ballの最下部が上ににある場合、かつ、
+                0 < ba.speedY) {//・・・ボールが上からr下向きに移動している場合に下記の条件分岐を実行
+                if (blockLeft < ba.posX && ba.posX < blockRight) {//・・・ブロック幅よりボール中心のx座標が内側にある場合に下記の処理を実行する。
+                  ba.speedY = -ba.speedY;//・・・y方向のスピードを反転させる
+                  hit = true;//・・・当たりフラグをtrueにする
+                }
+              }
+              //・・・ボールとブロック左辺との当たり判定を行います。
+              if (blockTop < ba.posY &&//・・・ブロックの上辺よりボール中心のy座標がが下にある場合かつ、
+               ba.posY < blockBottom) {//・・・ブロックの下辺よりボール中心のx座標が上にある場合に下記の条件分岐を実行
+                if (blockLeft < ballRight &&//・・・ブロック左辺よりボールの右側が右にある場合、かつ、
+                  blockRight > ballRight &&//・・・ブロック右辺よりボールの右側が左にある場合、かつ
+                  ba.speedX > 0) {//・・・ボールが右に動いている場合に下記の処理を実行
+                  ba.speedX = -ba.speedX;//・・・x方向のスピードを反転させる
+                  hit = true;//・・・当たりフラグをtrueにする
+                }
+              }
+              // ブロック右辺との当たり判定
+              if (blockTop < ba.posY &&//・・・ボールの中心点が下にあるブロック上辺より下にある場合かつ
+                ba.posY < blockBottom) {//・・・ボールの中心点がブロック下辺より上にある場合に下記条件分岐を実行
+                if (ballLeft < blockRight &&//・・・ブロック右辺よりボール左部が左側にある場合かつ、
+                  ballLeft > blockLeft &&//・・・ボール左部がブロック左辺より右側にある場合、かつ、
+                  ba.speedX < 0) {//・・・ボールが右から左に動いてる場合に下記の処理を実行
+                  ba.speedX = -ba.speedX;//・・・x方向のスピードを反転させる
+                  hit = true;//・・・当たりフラグをtrueにする
+                }
+              }
+              if (hit) { //・・・もし当たってたら下記の処理を実行する
+                //・・・アイテムを表示させる処理を以下に記述する
+                var posX = blockLeft + bl.width / 2;//・・・アイテムを描画させるx座標の中心を設定します。
+                var posY = bl.height * i + bl.height / 2 + bl.BLOCK_MARGIN_TOP;//・・・アイテムを描画させるy座標の中心を設定します。
+                if (bl.map[i][j] === BLOCK_WITH_GREEN_ITEM) { //・・・2が入ってたら以下の処理を実行する
+                  itemsAry.push(new Item(posX, posY, 1, LOGO_GREEN_PATH, GREEN_ITEM));//・・・itemsAry配列に緑のアイテムのインスタンスを格納する
+                } else if (bl.map[i][j] === BLOCK_WITH_PINK_ITEM) { //・・・2が入ってたらitemを降らせる
+                  itemsAry.push(new Item(posX, posY, 2, LOGO_PINK_PATH, PINK_ITEM));//・・・itemsAry配列にピンクのアイテムのインスタンスを格納する
+                }
+                bl.map[i][j] = NO_BLOCK;//・・・ブロックを非表示にする
+                sf.hitBlock.stop();//
+                sf.hitBlock.play();//・・・ballとブロックが当たった際の衝突音を鳴らす
+                hit = false;//・・・フラグを下す
+              }
+            }
+          }
+        }
+        if (!countBlock && gs.isGameStarted) { //現在のブロックが0個の場合に
+          gameClearFunc(); //ゲームクリア関数を実行し、ゲームを終了させる。
+        }
+      }
+
+      function ballHitsWalls() { //・・・ボールが壁に当たった際に反射させる関数を定義する
+        var ballTop = ba.posY - ba.radius;//・・・ボール上部のy座標の値を変数へ格納
+        var ballBottom = ba.posY + ba.radius;//・・・ボール下部のy座標の値を変数へ格納
+        var ballLeft = ba.posX - ba.radius;//・・・ボールの左部のx座標の値を変数を格納
+        var ballRight = ba.posX + ba.radius;//・・・ボールの右部のx座標の値を変数へ格納
+
+        // 円を描画する
+        var hitWall = false;//・・・壁に当たったかどうかのフラグ変数を宣言する
+        if (ballLeft <= 0 && ba.speedX < 0) {//・・・ボールが左に移動しているかつ、ボールの左側が、左の壁に接触している場合に下記処理を実行します。
+          ba.speedX = -ba.speedX;//・・・ボールのx方向の速度を反転させます。
+          hitWall = true;//・・・当たりフラグを立てます。
+        }
+        if (ctx.canvas.width <= ballRight && ba.speedX > 0) {//・・・ボールが右へ移動しているandボールの右側が右の壁に接触している場合に下記の処理を実行します。
+          ba.speedX = -ba.speedX;//・・・ボールのx方向の速度を反転させます
+          hitWall = true;//・・・当たりフラグを立てます
+        }
+        if (ballTop <= 0) {//・・・もしボールの上部が画面最上部に達していたら
+          ba.speedY = -ba.speedY;//・・・ボールのx方向の速度を反転させます。
+          hitWall = true;//・・・当たりフラグを立てます
+        }
+        if (hitWall) {//・・・もし壁にボールが当たってたら、サウンドを鳴らします。
+          sf.kabe.stop();
+          sf.kabe.play();//・・・ボールが壁に当たった時の音源を鳴らします。
+        }
+      }
+
+      function itemTimeCheck() { //・・・アイテムの効力時間を監視する関数を定義します。
+        if (p.itemTime) { //・・・アイテム効力中を示す値が0以外の場合に、下記の処理を実行します。
+          p.itemTime--;//・・・アイテム効果持続時間を1減らします。
+          if (p.itemTime === 0) { //・・・アイテム効力が切れた場合に下記の処理を実行します。
+            //元に戻す処理を以下に記述
+            p.width = NORMAL_WIDTH;//・・・自機の幅を元に戻します。
+            if (p.workingItem === GREEN_ITEM) {//・・・緑のアイテムが効果中であった場合に下記の処理を実行します。
+              p.posX += 20;//・・・40px短くなるので、20px右にずらします。
+            } else if(p.workingItem === PINK_ITEM) {//・・・ピンクのアイテムが効果中の場合は、
+              p.posX -= 20;//・・・40px長くなるので、20px左にずらします。
+            }
+            p.workingItem = NO_ITEM;//・・・効果中のアイテムを消去します
+            sf.powpowpow.stop(); //・・・
+            sf.powpowpow.play(); //・・・サウンドを鳴らします
+          }
+        }
+      }
+
+      function itemMove() { //itemを動かす際に実行されるitemMove関数を定義します。
+        if (itemsAry.length) {//・・・itemsAryにアイテムが格納されている場合に以下の処理を実行します。
+          for (var i = 0; i < itemsAry.length; i++) {//・・・itemsAry数をfor文で回します
+            var it = itemsAry[i]; //・・・コードを見易くするため、短い変数名へ代入します
+            var itemTop = it.y - it.radius;//・・・アイテムの下部のy座標を変数へ格納します
+            var itemBottom = it.y + it.radius;//・・・アイテムの下部のy座標を変数へ格納します
+            var itemLeft = it.x - it.radius;//・・・アイテムの左部のx座標を変数へ格納します
+            var itemRight = it.x + it.radius;//・・・アイテムの右部のx座標を変数へ格納します
+            if (it.alive) {//・・・アイテムのaliveフラグが立っている場合に以下を実行します
+              it.move();//・・・アイテムを動かすメソッドを実行します。
+              ctx.drawImage(//・・・イメージを描画するメソッドを実行し、引数に以下のプロパティが入ったオブジェクトを渡します。
+                it.logoImg,//・・・描画する画像
+                itemLeft,//・・・イメージを描画するx座標のポイント
+                itemTop,//・・・イメージを描画するy座標のポイント
+                it.diameter,//・・・イメージの幅
+                it.diameter//・・・イメージの高さ
+              );
+              //・・・自機とアイテムとの当たり判定を行います。
+              if (p.posY < itemBottom && p.posY + p.height > itemTop) {//・・・自機の上辺よりアイテムの下側が下にあるand自機の下辺よりアイテムの上側が上にある場合に下記条件分岐を実行します。
+                if (itemRight > p.posX && itemLeft < p.posX + p.width) {//自機の左辺よりアイテムの右側が右にあるand自機の右辺よりアイテムの左側が左にある場合に下記の処理を実行します
+                  //・・・当たったとみなし、衝突時の処理を以下に記述
+                  it.alive = false;//・・・・・・アイテムのaliveフラフを下します
+                  p.itemTime = 300;//・・・アイテム持続時間を300にします
+                  sf.itemGet.stop(); //・・・
+                  sf.itemGet.play(); //・・・アイテムを取ったら音を鳴らします。
+                  if (it.type === GREEN_ITEM && p.workingItem !== GREEN_ITEM) {//・・・緑のアイテムの場合and緑アイテムが効果中でない場合に以下の処理を実行します
+                    p.width = LONG_WIDTH;//・・・自機の幅をロングにします
+                    if (!p.workingItem) {//・・・アイテム効果中でない場合に以下を実行します
+                      p.posX -= 20;//・・・自機の幅が40伸びるので、20左にずらします
+                    } else if (p.workingItem === PINK_ITEM) {//・・・ピンクのアイテムが効果中の場合に以下を実行します。
+                      p.posX -= 40;//・・・自機の幅が80伸びるので、40左にずらします
+                    }
+                    p.workingItem = GREEN_ITEM;//・・・効果中アイテムに緑のアイテムを代入します
+                  } else if (it.type === PINK_ITEM && p.workingItem !== PINK_ITEM) {//・・・ピンクのアイテムの場合andピンクアイテムが効果中でない場合に下記を実行しあm酢
+                    p.width = SHORT_WIDTH;//・・・自機の幅をショートにします
+                    if (!p.workingItem) {//・・・アイテム効果中でない場合に以下の処理を実行
+                      p.posX += 20;//・・・自機の幅が40縮むので、20右ににずらします
+                    } else if (p.workingItem === GREEN_ITEM) {//・・・緑のアイテムが効果中の場合に以下の処理を実行します
+                      p.posX += 40;//・・・自機の幅が80縮むので、40右にずらします
+                    }
+                    p.workingItem = PINK_ITEM;//・・・ピンクのアイテムを効果中にします
+                  }
+                }
+              } else if (itemTop > ctx.canvas.height) { //画面外に出た場合、配列から削除します
+                it.alive = false;//アイテムのaliveフラグを下ろし、画面から消去します
+              }
+            }
+          }
+        }
+      }
+
+      function ballHitsPlayer() { //・・・自機とボールとの当たり判定関数を定義します。
+        var ballTop = ba.posY - ba.radius;//ボール上部のx座標を変数へ格納します
+        var ballBottom = ba.posY + ba.radius;//ボール下部のx座標を変数へ格納します
+        var ballLeft = ba.posX - ba.radius;//ボールの左部のx座標を変数へ格納します
+        var ballRight = ba.posX + ba.radius;//ボールの右部のx座標を変数へ格納します
+
+        var pTop = p.posY;//・・・自機の上辺のy座標を変数へ格納します
+        var pBottom = p.posY + p.height;//・・・自機の下辺のy座標を変数へ格納します
+        var pLeft = p.posX;//・・・自機の左辺のx座標を変数へ格納します
+        var pRight = p.posX + p.width;//・・・自機の右辺のx座標を変数へ格納します
+
+
+        var hit = false;//・・・hit変数を初期化し、falseとします。
+        if (pTop < ballBottom &&//・・・自機の上辺よりボール下部が下の位置にある場合かつ、
+          pBottom > ballTop &&//・・・自機の下辺よりボールの上側が上にある場合かつ、
+          ba.speedY > 0) {//・・・ボールが上から下向きに動いている場合に以下の条件分岐を実行
+          if (ba.posX >= pLeft &&//・・・ボールのポジションが自機の左辺より右側にある場合かつ、
+           ba.posX <= pRight) {//・・・ボールの中心点が、自機の右辺より左側にある場合
+            if (p.moveLeft) {//・・・もしmoveLeftプロパティがtrueなら
+              ba.speedX -= 1;//・・・ボールのx方向のスピードを左方向へ加速させます
+            } else if (p.moveRight){//・・・もし自機が右に動いている場合に以下の処理を実行
+              ba.speedX += 1;//ボールのx方向のスピードを右方向へ加速させます
+            }
+            if (ba.speedX >= 6) {//・・・x方向のスピードが6を超えてしまった場合
+              ba.speedX = 5.4;//・・・x方向のスピードをmax5.4にする
+            } else if (ba.speedX <= -6) {//・・・x方向のスピードが-6を下回ったら
+              ba.speedX = -5.4;//・・・x方向のスピードをmax5.4にする
+            }
+            hit = true;//・・・当たりフラグを立てる
+          } else if (ba.posX < pLeft && ballRight > pLeft) {//・・・自機の左角に当たっった場合に以下の処理を実行
+              ba.speedX = -5.4;//左方向へスピードを振り切る
+              hit = true;//・・・hitフラグを立てる
+          } else if (ba.posX > pRight && ballLeft < pRight) {//・・・自機の右角に当たった場合に以下・・・左方向へスピードを振り切る
+              hit = true;//・・・フラグを立てる
+          }
+          if (hit) { //・・・hitフラグがたってたら
+            ba.speedY = Math.sqrt(Math.pow(ba.speed, 2) - Math.pow(ba.speedX, 2));//・・・スピードの絶対値が一定になるようy方向のスピードを決定します
+            ba.speedY = -ba.speedY;//・・・y方向スピードを反転させます
+            sf.ballHitPr.stop();
+            sf.ballHitPr.play();//・・・自機とボールが当たった際のサウンドを鳴らします。
+          }
+        }
+      }
+
+
+
+      //--------------------------------------------------------
+      アニメーション関数。
+      //--------------------------------------------------------
+      引数にコールバックを渡すと、そのコールバック関数がリピートされます。この書き方はお決まりごとのような書き方になっております。
+      window.requestAnimFrame = window.requestAnimationFrame ||
+          window.webkitRequestAnimationFrame ||
+          window.mozRequestAnimationFrame ||
+          window.oRequestAnimationFrame ||
+          window.msRequestAnimationFrame ||
+          function(callback) {
+            window.setTimeout(callback, 1000 / 60);
+          };
+      var cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame;
+
+
+
+        function keyDown(event) {//・・・キーダウン関数を定義します
+          switch (event.keyCode) {//・・・eventのkeycodeプロパティで条件分岐
+            case 37: // ←キー　//・・・もし37番のキーが押されたら
+            case 65: // Aキー　//・・・もし37番のキーが押されたら
+              p.moveLeft = true;//・・・時期を左に動かすためのフラグをtrueにします
+              break;
+            case 39: // →キー　//・・・もし39番のキーが押されたら
+            case 68: // Dキー　//・・・もし68番のキーが押されたら
+              p.moveRight = true;//時期を右に動かすためのフラグをtrueにします
+              break;
+            case 13: // enterキー　//・・・もし13番のキーが押されたら
+            case 32: // spaceキー　//・・・もし32番のキーが押されたら
+              startStop();//・・・スタートストップの関数を実行
+              break;
+            default:
+              break;
+          }
+        }
+
+        function keyUp(event) {・・・キーアップ関数を定義します
+          switch (event.keyCode) {//・・・eventのkeycodeプロパティで条件分岐
+            case 37: // ←キー　//・・・もし37番のキーがキーアップされたら
+            case 65: // Aキー　//・・・もし65番のキーがキーアップされたら
+              p.moveLeft = false;//・・・時期を左に動かすためのフラグをfalseにする
+              break;
+            case 39: // →キー　//・・・もし39番のキーがキーアップされたら
+            case 68: // Dキー　//・・・もし68番のキーがキーアップされたら
+              p.moveRight = false;//・・・時期を右に動かすためのフラグをfalseにする
+              break;
+            default:
+              break;
+          }
+        }
+
+
+
+          //----------------------------------------------------------
+          ループ関数
+          //----------------------------------------------------------
+          //・・・この関数内でいろんな値をupdateさせて、繰り返しcanvasへ描画しアニメーションさせる
+          function loop() {//・・・loop関数を定義する
+            _animationID = requestAnimFrame(loop);//・・・今回は使用しないが、一応タイマーIDを変数に格納しておく
+            ctx.clearRect(0, 0, canvas.width, canvas.height); //・・・canvas全体ををクリアします
+            ctx.beginPath();//pathを初期化します。
+            ctx.fillStyle = "#fff";//白色を設定します。
+            ctx.fillRect(0, 0, canvas.width, canvas.height); //canvas全面を塗り潰します。
+
+            //以下は分かりやすくするために変数を用意しました。
+            var fromX = (canvas.width - bgImg.width) / 2;//「g」の画像を貼り付けるx座標を設定します
+            var fromY = (canvas.height - bgImg.height) / 2;//「g」の画像を貼り付けるy座標を設定します
+            var width = bgImg.width;//・・・画像の幅を設定します
+            var height = bgImg.height;//・・・画像の高さを設定します
+            ctx.drawImage(bgImg, fromX, fromY, width, height);//・・・用意した変数を渡して画像をcanvasへ貼り付けます
+            util.displayText({//・・・テキストを描画します
+              text: "スマホの場合は、左右に傾けて操作してね"//・・・描画するテキストを文字列で渡します
+            }, canvas.width / 2, (canvas.height - 20));//・・・ポジションを指定します
+            util.blockDrow(); //・・・ブロックを描画します
+
+
+            if (gs.isGameStarted) {//もしゲーム中の場合は以下の処理を実行します。
+              gs.countTime = Math.floor((new Date() - gs.startTime) / 1000);//・・・現在の時間からゲームスタート時間を差し引いたものを経過時間としてcountTimeプロパティへ格納します
+            }
+
+            if (gs.isGameStarted && !gs.gameClearDisplayTime && !gs.gameOverDisplayTime) {//ゲーム中かつ、 gameClearを表示中でなく、かつ、game overテキストを表示中でない場合に、以下の処理を実行します。
+              gs.frameCount++;//・・・フレーム数をインクリメント
+              ba.move(); //・・・ボールを移動させる
+              itemTimeCheck(); //・・・item効力時間チェック
+              ballHitsWalls(); //・・・ball壁反射
+              ballHitsBlocks(); //・・・ボールがブロックに当たった際の関数
+              //・・・ボールが最下部に到達してしまった場合にゲームを終了させる
+              if (ba.posY > ctx.canvas.height) {//・・・もしボールの中心位置が、canvasの底辺の位置まで来たら以下の処理を実行します　
+                gameOver();//・・・ゲームを終了するします
+              }
+              itemMove(); //・・・itemを動かすand自機との当たり判定を行う関数を実行します。
+              ballHitsPlayer(); //・・・ボールと自機との当たり判定を行う関数を実行します。
+            } else { //・・・ゲーム中でない場合に以下の処理を実行します。
+              ba.posX = p.posX + p.width / 2;//・・・ボールのx位置を、自機の中央へ配置します。
+              ba.posY = p.posY - ba.radius;//・・・ボールの下側が自機の上辺へ接触するように位置を指定します。
+              if (!gs.gameClearDisplayTime && !gs.gameOverDisplayTime) {//・・・gameClearを表示中でないかつ、game overテキストを表示中でない場合にいかの処理を実行します
+                util.displayText({//"click or enter!"のテキストを画面へ描画する
+                  font: "40px 'ＭＳ Ｐゴシック'",//フォント、文字サイズを指定
+                  color: "#0088dd",//文字色を姉弟
+                  text: "click or enter!"//表示テキストを指定
+                }, canvas.width / 2, canvas.height / 2);//テキスト表示位置を指定
+              }
+            }
+
+            p.move();//・・・自機を動かす関数を実行します。
+            p.changeColorFn(); //自機の色を変更します。
+
+            //テキストを描画します
+            util.displayText({//"G's Academy ブロック崩し"の文字を画面上へ表示させる関数
+              font: "20px 'ＭＳ Ｐゴシック'",//文字サイズとフォントスタイルを指定
+              text: "G's Academy ブロック崩し"//表示させるテキスト
+            }, canvas.width / 2, 20);//表示座標を指定
+            util.displayText({//経過時間を表示させる
+              position: 'left',//positionを指定
+              text: 'TIME : ' + gs.countTime
+            }, 20, 40);
+            util.displayText({//ベストタイムを表示させる
+              position: 'right',//positionを指定
+              text: 'BESTTIME : ' + gs.bestTime//表示テキストを指定
+            }, canvas.width - 20, 40);//表示座標を指定
+            if (gs.gameClearDisplayTime) {//gameClearDisplayTimeが0以外の場合
+              util.displayText({//gameclearテキストを表示させる処理を記述
+                font: "50px 'ＭＳ Ｐゴシック'",
+                color: 'rgb(' + util.rand(255) + ',' + util.rand(255) + ',' + util.rand(255) + ')',
+                text: "game clear!!"
+              }, canvas.width / 2, canvas.height / 2); //game clear!の文字を画面に表示
+              gs.gameClearDisplayTime--;//gameClearDisplayTimeをデクリメントし、0になるまではgameclearを表示
+            } else if (gs.gameOverDisplayTime) {//gameOverDisplayTimeが0以外の場合
+              util.displayText({//gameOverテキストを表示させる処理を記述
+                font: "40px 'ＭＳ Ｐゴシック'",
+                color: "#772277",
+                text: "game Over..."
+              }, canvas.width / 2, canvas.height / 2); //・・・game clear!の文字を画面に表示します
+              gs.gameOverDisplayTime--;//・・・gameOverDisplayTimeをデクリメントし、0になるまではgameclearを表示します。
+            }
+            util.drawRect(p.posX, p.posY, p.width, p.height, p.color); //・・・自機を描画します
+            //・・・理解しやすくする為に、変数を用意いたしました。
+            var ballX = ba.posX - ba.radius;//・・・ボールを描画する為の基準x座標を変数へ格納します。
+            var ballY = ba.posY - ba.radius;//・・・ボールを描画する為の基準y座標を変数へ格納します。
+            var ballW = ba.diameter;//・・・ボール画像幅を変数へ格納します。
+            var ballH = ba.diameter;//・・・ボール画像高さを変数へ格納します。
+            ctx.drawImage(ba.imgPath, ballX, ballY, ballW, ballH); //ボールを描画します。
+          }
+          loop();//・・・loop関数を実行し、loopをスタートさせます。
+
+          //----------------------------------------
+          イベントの設定
+          //----------------------------------------
+
+          //ここではイベントをdom要素へ設定します。
+
+          document.addEventListener('keydown', keyDown, true); //キーを押した時、呼び出される関数としてkeyDown関数を指定
+          document.addEventListener('keyup', keyUp, true); //・・・キーを離した時、呼び出される関数として、keyUp関数を指定
+          canvas.addEventListener('click', startStop, true);//・・・canvas要素をクリックした際に、startStop関数が実行されるようにする。
+
+          window.ondeviceorientation = function(event) { // deviceorientationイベントで、デバイスが回転した際に以下の処理を実行するように
+            var gamma = event.gamma; // y-axis
+            if (gamma < -5) {//・・・gammaの値が−5以下になった際に以下の処理を実行します
+              p.moveLeft = true;//・・・自機を左に動かします
+            } else if(gamma > 5){//・・・gammaの値が5以上になった際に以下の処理を実行します
+              p.moveRight = true;//・・・自機を右に動かします
+            }else{
+              p.moveLeft = false;//・・・gammaの値が−5〜5の場合は
+              p.moveRight = false;//・・・自機を停止させます。
+            }
+          };
+
+          document.addEventListener('DOMContentLoaded', function() {//DOM要素の読み込み準備ができたら
+            //----------bestTimeをlocalstrageから読み込み
+            gs.bestTime = localStorage.getItem('bestTime');//gsオブジェクトの.bestTimeプロパティへ、ローカルストレージに保存されているbestTimeの値を格納します。
+            if (!gs.bestTime) {//・・・もしbestTimeがなければ、以下の処理を実行します
+              gs.bestTime = '';//・・・空の文字列を格納します。
+            }
+          });
+
+
+
+
+//--------------------------------------------------------
+class.js
+//--------------------------------------------------------
+class.jsファイルには、Itemクラスを記述しています。
+
+//-------------------------------------------------class
+function Item(x, y, speed, logoImgPath, type) {//・・・コンストラクタを定義します。newした際にコンストラクタに5つの引数を渡すように作成しました。
+    this.x = 0;//・・・x座標
+    this.y = 0;//・・・y座標
+    this.speed = 0;//・・・itemの速度
+    this.alive = false;//・・・画面に表示するかどうかのフラグ
+    this.width = 25;//・・・itemの幅
+    this.height = 25;//・・・itemの高さ
+    this.diameter = 25;//・・・itemの直径
+    this.radius = 12.5;//・・・itemの半径
+    this.logoImg = new Image();//・・・itemの画像
+    this.setPosition(x, y, speed, logoImgPath);//・・・ポジションを初期化するためのメソッドを定義しました。
+    this.type = type;//・・・itemがgreenタイプかpinkタイプかを持たせるプロパティ
+}
+
+Item.prototype.setPosition = function (x, y, speed, logoImgPath){//・・・itemインスタンスに初期表示場所をしていするためのメソッドをprototypeを設定
+    this.x = x;//・・・x座標に引数で受け取った値を格納する
+    this.y = y;//・・・y座標に引数で受け取った値を格納する
+    this.speed = speed;//・・・speedに引数で受け取った値を格納する
+    this.alive = true;//・・・aliveフラグを立てる
+    this.logoImg.src = logoImgPath;//・・・logoImg.srcへパスを格納
+}
+
+Item.prototype.move = function (){//・・・itemインスタンスを動かすためのメソッドを定義
+    this.y += this.speed;//・・・y座標をspeedの値の分のみ下方へ移動させる。
+}

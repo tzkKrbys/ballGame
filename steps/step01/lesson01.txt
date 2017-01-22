@@ -1,0 +1,104 @@
+この章では、ブラウザ上で動作するブロック崩しゲームを作成いたします。
+ブロック崩しゲーム作りを通じて、
+・canvasでのアニメーション描画、
+・キー入力による操作
+・audioファイルの再生
+・オブジェクトの書き方
+・クラスの書き方
+・当たり判定
+
+・二次元配列でのマップ作成
+・localstrageへのデータ保存、取得
+・スマホ表示対応
+・スマホのジャイロセンサーの傾き取得
+などを学んでいきましょう。
+
+
+【完成ファイル確認】
+完成したゲームを確認してみましょう。
+ソースをダウンロードして、ブラウザで開いてみましょう。
+ファイルをサーバーにアップできる方はスマホでも開き、スマホを傾けて操作してみましょう。
+
+
+まずは、必要なファイルを確認しましょう。
+
+blockKuzushi/
+├─index.html
+├─css/
+│ └─style.css
+├─js/
+│ ├─main.js
+│ └─class.js
+├─images/
+└─sound/
+
+imagesフォルダとsoundフォルダには、後ほどファイルを格納いたします。
+
+それではフォルダ構成通りにファイルを作成していきます。
+まずはindex.html,style.css,main.jsの３つのファイルを作成しましょう。
+
+//-------------index.html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+</head>
+<body>
+
+</body>
+</html>
+
+//-------------css/style.css
+@charset "utf-8";
+/*以下にスタイルを書いていく*/
+
+//-------------js/main.js
+(function(){
+  "use strict";
+  //以下にスクリプトを書いていく
+
+})();
+
+
+これで作成できましたが、まだファイル同士が紐付いていない状態です。
+このままではhtmlファイルに動きやスタイルがつけられない為、
+index.htmlファイルのtitleタグの上辺りにlinkタグを書いていきましょう。
+また、main.jsの紐付けの為、bodyタグの直前にscriptタグを書きましょう。
+//-------------index.html
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="./css/style.css">
+  <title>Document</title>
+</head>
+<body>
+
+  <script src="./js/main.js"></script>
+</body>
+</html>
+
+//できました。ではまず、cssファイルがきちんと紐付いているかどうか、style.cssに以下を記述してみましょう。
+//-------------css/style.css
+body {
+  background: #000;
+}
+
+記述し保存したら、index.htmlをブラウザで開いてみましょう。
+画面が黒くなっていれば、きちんとスタイルが当たっていることになります。
+
+続いて、main.jsについても確認しましょう。一旦テストで下記コードをmain.jsへ入力してください。
+//---------------------------------js/main.js
+(function(){
+  "use strict";
+  //以下にスクリプトを書いていく
+
+  alert("test!");
+
+})();
+
+記述したら、先ほど開いたindex.htmlをリロードしてみましょう。
+アラートが画面上に表示されれば、jsファイルがきちんと紐付いていることになります。
+
+それではこれでファイルの紐付けが確認できましたので、次のステップへ進みましょう。

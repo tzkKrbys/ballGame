@@ -1,0 +1,39 @@
+@charset "utf-8";
+
+* {
+    margin: 0;
+    padding: 0;
+}
+
+html,body {
+  height: 100%;
+}
+
+body {
+    background: #000 url(../images/bodyBg01.jpg) center center;
+    background-size: cover;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/*背景をぼかすための擬似要素*/
+body:before {
+  content: "";
+  display: block;
+  background: inherit;
+  filter: blur(5px);
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  bottom: -5px;
+  left: -5px;
+}
+
+canvas {
+    box-shadow: 3px 3px 6px rgba(0,0,0,.8);
+    position: relative;
+    z-index: 10;
+    width:375px;
+    height:540px;
+}

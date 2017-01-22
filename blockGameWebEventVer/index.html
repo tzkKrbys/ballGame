@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <script type="text/javascript">
+  　if ((navigator.userAgent.indexOf('iPhone') > 0) || navigator.userAgent.indexOf('iPod') > 0 || navigator.userAgent.indexOf('Android') > 0) {
+        // document.write('<meta name="viewport" content="width=320, initial-scale=1,minimum-scale=1, maximum-scale=1, user-scalable=no">');
+        var scale = screen.width/375;
+        document.write('<meta name="viewport" content="width=375, user-scalable=no, target-densitydpi=device-dpi, initial-scale='+scale+'">');
+    }else{
+        document.write('<meta name="viewport" content="width=device-width, initial-scale=1,minimum-scale=1, maximum-scale=1, user-scalable=yes">');
+    }
+  </script>
+  <link rel="stylesheet" href="./css/style.css">
+  <title>ball game</title>
+</head>
+  <body>
+    <canvas id="canvas" width="375" height="540"></canvas>
+    <script src="./js/lib/soundjs-0.6.2.min.js"></script>
+    <script src="./js/main.js"></script>
+    <script src="./js/class.js"></script>
+  </body>
+</html>

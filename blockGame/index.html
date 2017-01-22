@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <script type="text/javascript">
+  　if ((navigator.userAgent.indexOf('iPhone') > 0) || navigator.userAgent.indexOf('iPod') > 0 || navigator.userAgent.indexOf('Android') > 0) {
+        // document.write('<meta name="viewport" content="width=320, initial-scale=1,minimum-scale=1, maximum-scale=1, user-scalable=no">');
+        var scale = screen.width/375;
+        document.write('<meta name="viewport" content="width=375, user-scalable=no, target-densitydpi=device-dpi, initial-scale='+scale+'">');
+    }else{
+        document.write('<meta name="viewport" content="width=device-width, initial-scale=1,minimum-scale=1, maximum-scale=1, user-scalable=yes">');
+    }
+  </script>
+  <link rel="stylesheet" href="./css/style.css">
+  <title>ball game</title>
+</head>
+  <body>
+    <canvas id="canvas" width="375" height="540"></canvas>
+
+    <!-- <p id="infoBox">
+        <span id="count"></span>
+        <span id="bestTime"></span>
+        <p id="gyroscope"></p>
+    </p> -->
+    <!-- サウンドファイル -->
+    <audio id="select06" src="sound/select06.mp3">
+    <audio id="button04a" src="sound/button04a.mp3">
+    <audio id="destruction1" src="sound/destruction1.mp3">
+    <audio id="button05" src="sound/button05.mp3">
+    <audio id="bgm" src="sound/bgmCool.mp3" loop>
+    <audio id="fanfare" src="sound/ff4_09_fanfare_short.mp3">
+    <audio id="itemGet" src="sound/itemGet.mp3">
+    <audio id="powpowpow" src="sound/powpowpow.mp3">
+    <!-- <audio id="bgm" src="sound/bgm.m4a"> -->
+
+    <script src="./js/main.js"></script>
+    <script src="./js/class.js"></script>
+  </body>
+</html>
